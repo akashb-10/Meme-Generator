@@ -9,5 +9,12 @@
 *.swo
 *~
 
-# Dependencies (if you add them later)
+# Dependencies
 node_modules/
+
+# Next.js
+.next/
+out/
+
+# Env
+.env*.local

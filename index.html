@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f1a;
+      --surface:  #1a1a2e;
+      --surface2: #16213e;
+      --accent:   #e94560;
+      --text:     #e0e0e0;
+      --muted:    #888;
+      --border:   #2a2a4a;
+      --radius:   8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 20px; font-weight: 700; color: var(--accent); }
+    header .subtitle { color: var(--muted); font-size: 13px; }
+
+    /* ── LAYOUT ── */
+    .app {
+      display: flex;
+      height: calc(100vh - 53px);
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .upload-btn {
+      margin: 10px;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      width: calc(100% - 20px);
+      transition: opacity 0.2s;
+    }
+    .upload-btn:hover { opacity: 0.85; }
+    .templates-label {
+      padding: 4px 12px 6px;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .template-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px 10px 10px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .template-thumb {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      cursor: pointer;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .template-thumb:hover  { border-color: var(--accent); transform: scale(1.04); }
+    .template-thumb.active { border-color: var(--accent); }
+    .template-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .thumb-label {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      font-size: 9px;
+      text-align: center;
+      padding: 2px 4px;
+      font-weight: 600;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a14;
+      overflow: hidden;
+      padding: 20px;
+      position: relative;
+    }
+    #canvas {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      display: none;
+      touch-action: none;
+    }
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-state .icon { font-size: 64px; opacity: 0.35; }
+    .empty-state p { font-size: 15px; line-height: 1.6; }
+
+    /* ── CONTROLS PANEL ── */
+    .controls {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: 270px;
+    }
+
+    /* Label tabs row */
+    .labels-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .label-tab {
+      padding: 4px 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      transition: all 0.15s;
+      white-space: nowrap;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .label-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .label-tab:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+    .add-label-btn {
+      padding: 4px 12px;
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .add-label-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Input row */
+    .control-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 120px;
+    }
+    .control-group > label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .text-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 10px;
+      color: var(--text);
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .text-input:focus { border-color: var(--accent); }
+
+    /* Font size */
+    .range-row { display: flex; align-items: center; gap: 8px; }
+    input[type=range] { flex: 1; accent-color: var(--accent); }
+    .range-val { font-size: 12px; color: var(--muted); width: 30px; text-align: right; flex-shrink: 0; }
+
+    /* Alignment */
+    .align-btns { display: flex; gap: 4px; }
+    .align-btn {
+      width: 32px; height: 32px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      transition: all 0.15s;
+    }
+    .align-btn.active, .align-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* Bottom row */
+    .bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .delete-btn {
+      padding: 8px 14px;
+      background: transparent;
+      border: 1px solid #c0392b;
+      border-radius: var(--radius);
+      color: #c0392b;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .delete-btn:hover { background: #c0392b; color: #fff; }
+    .delete-btn:disabled { opacity: 0.35; pointer-events: none; }
+    .drag-hint {
+      flex: 1;
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      opacity: 0.7;
+    }
+    .download-btn {
+      padding: 8px 22px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .download-btn:hover { opacity: 0.85; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      header .subtitle { display: none; }
+      .app { flex-direction: column; height: auto; overflow: auto; }
+      .sidebar {
+        width: 100%; min-width: 0;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .template-grid {
+        grid-template-columns: repeat(5, 1fr);
+        max-height: 110px;
+      }
+      .main { height: auto; }
+      .canvas-area { min-height: 55vw; padding: 12px; }
+      .controls { max-height: none; }
+      .drag-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎭 Meme Generator</h1>
+  <span class="subtitle">Pick a template or upload an image — add text, drag to position, download</span>
+</header>
+
+<div class="app">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Templates</div>
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">⬆ Upload Image</button>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <div class="templates-label">Classic Memes</div>
+    <div class="template-grid" id="templateGrid"></div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+    <div class="canvas-area" id="canvasArea">
+      <canvas id="canvas" width="800" height="600"></canvas>
+      <div class="empty-state" id="emptyState">
+        <div class="icon">🖼️</div>
+        <p>Select a template from the left<br>or upload your own image</p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <!-- Label tabs -->
+      <div class="labels-row" id="labelsRow"></div>
+
+      <!-- Text + Alignment -->
+      <div class="control-row">
+        <div class="control-group" style="flex:2; min-width:180px;">
+          <label>Text</label>
+          <input type="text" class="text-input" id="textInput"
+                 placeholder="Enter meme text…" oninput="onTextInput()">
+        </div>
+        <div class="control-group" style="min-width:110px; flex:0;">
+          <label>Align</label>
+          <div class="align-btns">
+            <button class="align-btn" id="alignLeft"   onclick="setAlign('left')"   title="Left">&#8592;</button>
+            <button class="align-btn active" id="alignCenter" onclick="setAlign('center')" title="Center">&#8596;</button>
+            <button class="align-btn" id="alignRight"  onclick="setAlign('right')"  title="Right">&#8594;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Font size -->
+      <div class="control-group">
+        <label>Font Size</label>
+        <div class="range-row">
+          <input type="range" id="fontSizeSlider" min="12" max="120" value="48" oninput="onFontSize()">
+          <span class="range-val" id="fontSizeVal">48px</span>
+        </div>
+      </div>
+
+      <!-- Bottom row -->
+      <div class="bottom-row">
+        <button class="delete-btn" id="deleteBtn" onclick="deleteActiveLabel()">✕ Delete Label</button>
+        <span class="drag-hint">Drag text on the canvas to reposition</span>
+        <button class="download-btn" onclick="downloadMeme()">⬇ Download Meme</button>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  SVG TEMPLATES
+// ─────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    name: 'Drake',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
+      <rect width="600" height="300" fill="#2c3e50"/>
+      <rect y="300" width="600" height="300" fill="#ecf0f1"/>
+      <rect x="0"   y="0"   width="300" height="300" fill="#34495e"/>
+      <rect x="300" y="0"   width="300" height="300" fill="#2c3e50"/>
+      <rect x="0"   y="300" width="300" height="300" fill="#bdc3c7"/>
+      <rect x="300" y="300" width="300" height="300" fill="#ecf0f1"/>
+      <text x="150" y="170" font-size="90" text-anchor="middle">🚫</text>
+      <text x="150" y="470" font-size="90" text-anchor="middle">👉</text>
+      <text x="450" y="155" font-size="22" text-anchor="middle" fill="#aaa" font-family="sans-serif">Bad option</text>
+      <text x="450" y="455" font-size="22" text-anchor="middle" fill="#444" font-family="sans-serif">Good option</text>
+    </svg>`
+  },
+  {
+    name: 'This Is Fine',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e74c3c"/>
+          <stop offset="100%" stop-color="#f39c12"/>
+        </linearGradient>
+      </defs>
+      <rect width="600" height="450" fill="url(#g1)"/>
+      <rect y="370" width="600" height="80" fill="#5d4037" opacity="0.6"/>
+      <text x="300" y="80"  font-size="32" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">This is fine.</text>
+      <text x="300" y="200" font-size="110" text-anchor="middle">🔥</text>
+      <text x="300" y="350" font-size="80"  text-anchor="middle">☕</text>
+    </svg>`
+  },
+  {
+    name: 'Two Buttons',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500">
+      <rect width="600" height="500" fill="#2980b9"/>
+      <text x="300" y="80" font-size="30" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">IMPOSSIBLE CHOICE</text>
+      <rect x="60"  y="160" width="190" height="70" rx="12" fill="#e74c3c"/>
+      <rect x="350" y="160" width="190" height="70" rx="12" fill="#e74c3c"/>
+      <text x="155" y="202" font-size="18" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">OPTION A</text>
+      <text x="445" y="202" font-size="18" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">OPTION B</text>
+      <text x="300" y="420" font-size="100" text-anchor="middle">😰</text>
+    </svg>`
+  },
+  {
+    name: 'Expanding Brain',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="640">
+      <rect y="0"   width="600" height="160" fill="#1a252f"/>
+      <rect y="160" width="600" height="160" fill="#1f618d" opacity="0.85"/>
+      <rect y="320" width="600" height="160" fill="#6c3483" opacity="0.75"/>
+      <rect y="480" width="600" height="160" fill="#b7950b" opacity="0.7"/>
+      <text x="260" y="90"  font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Normal idea</text>
+      <text x="260" y="250" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Slightly better</text>
+      <text x="260" y="410" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Big brain idea</text>
+      <text x="260" y="570" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Galaxy brain ✨</text>
+      <text x="560" y="100"  font-size="52" text-anchor="middle">🧠</text>
+      <text x="560" y="265"  font-size="64" text-anchor="middle">🧠</text>
+      <text x="560" y="430"  font-size="76" text-anchor="middle">🧠</text>
+      <text x="560" y="590"  font-size="88" text-anchor="middle">🧠</text>
+    </svg>`
+  },
+  {
+    name: 'Distracted BF',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
+      <rect width="600" height="400" fill="#3498db"/>
+      <rect x="20"  y="80"  width="160" height="240" rx="8" fill="#e74c3c" opacity="0.85"/>
+      <rect x="220" y="60"  width="160" height="280" rx="8" fill="#e67e22" opacity="0.85"/>
+      <rect x="420" y="100" width="160" height="200" rx="8" fill="#2ecc71" opacity="0.85"/>
+      <text x="100" y="225" font-size="70" text-anchor="middle">😠</text>
+      <text x="300" y="225" font-size="70" text-anchor="middle">😍</text>
+      <text x="500" y="215" font-size="70" text-anchor="middle">✨</text>
+      <text x="100" y="370" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">Girlfriend</text>
+      <text x="300" y="370" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">Boyfriend</text>
+      <text x="500" y="340" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">New Thing</text>
+    </svg>`
+  },
+  {
+    name: 'Change My Mind',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
+      <rect width="600" height="450" fill="#fdf6e3"/>
+      <text x="300" y="90"  font-size="30" text-anchor="middle" fill="#555" font-weight="bold" font-family="sans-serif">Change My Mind</text>
+      <rect x="80" y="140" width="440" height="130" rx="10" fill="white" stroke="#ccc" stroke-width="2"/>
+      <text x="300" y="215" font-size="20" text-anchor="middle" fill="#333" font-family="sans-serif">Your hot take here</text>
+      <rect x="100" y="290" width="400" height="16" rx="4" fill="#8d6e63" opacity="0.5"/>
+      <text x="300" y="380" font-size="60" text-anchor="middle">🧍</text>
+      <text x="450" y="380" font-size="50" text-anchor="middle">☕</text>
+    </svg>`
+  },
+  {
+    name: 'Surprised',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
+      <rect width="600" height="450" fill="#f1c40f"/>
+      <text x="300" y="70"  font-size="36" text-anchor="middle" fill="#2c3e50" font-weight="bold" font-family="sans-serif">Surprised Pikachu</text>
+      <text x="300" y="330" font-size="220" text-anchor="middle">😮</text>
+    </svg>`
+  },
+  {
+    name: 'One Does Not',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a1a2e"/>
+          <stop offset="100%" stop-color="#2c3e50"/>
+        </linearGradient>
+      </defs>
+      <rect width="600" height="400" fill="url(#sky)"/>
+      <polygon points="0,400 160,210 310,360 460,190 600,400" fill="#27ae60" opacity="0.45"/>
+      <polygon points="0,400  90,290 190,400" fill="#1e8449" opacity="0.65"/>
+      <polygon points="420,400 520,270 600,400" fill="#1e8449" opacity="0.65"/>
+      <text x="300" y="90"  font-size="26" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">ONE DOES NOT SIMPLY</text>
+      <text x="300" y="270" font-size="110" text-anchor="middle">🧙</text>
+      <text x="300" y="370" font-size="22" text-anchor="middle" fill="#bdc3c7" font-family="sans-serif">walk into Mordor</text>
+    </svg>`
+  },
+  {
+    name: 'Success Kid',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
+      <rect width="600" height="450" fill="#27ae60"/>
+      <text x="300" y="80"  font-size="42" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">SUCCESS KID</text>
+      <text x="300" y="320" font-size="200" text-anchor="middle">✊</text>
+      <text x="300" y="420" font-size="22" text-anchor="middle" fill="#d5f5e3" font-family="sans-serif">When the plan actually works</text>
+    </svg>`
+  },
+  {
+    name: 'Blank',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
+      <rect width="600" height="450" fill="white"/>
+      <rect x="18" y="18" width="564" height="414" fill="none" stroke="#ddd" stroke-width="2" stroke-dasharray="10,5"/>
+      <text x="300" y="185" font-size="30" text-anchor="middle" fill="#ccc" font-family="sans-serif">Blank Canvas</text>
+      <text x="300" y="255" font-size="20" text-anchor="middle" fill="#ddd" font-family="sans-serif">Upload an image or start typing</text>
+      <text x="300" y="340" font-size="60" text-anchor="middle">🖼️</text>
+    </svg>`
+  }
+];
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+const MAX_CANVAS_W = 800;
+
+let currentImage   = null;
+let labels         = [];
+let nextLabelId    = 0;
+let activeLabelId  = null;
+let dragging       = null; // { labelId, offsetX, offsetY }
+
+const canvas       = document.getElementById('canvas');
+const ctx          = canvas.getContext('2d');
+const emptyState   = document.getElementById('emptyState');
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+function init() {
+  buildTemplateGrid();
+  // Default two labels
+  addLabel('TOP TEXT',    0.5, 0.08);
+  addLabel('BOTTOM TEXT', 0.5, 0.92);
+  setActiveLabelId(labels[0].id);
+  renderLabelsPanel();
+  syncControls();
+
+  // Mouse events
+  canvas.addEventListener('mousedown',  onPointerDown);
+  canvas.addEventListener('mousemove',  onPointerMove);
+  canvas.addEventListener('mouseup',    onPointerUp);
+  canvas.addEventListener('mouseleave', onPointerUp);
+
+  // Touch events
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  canvas.addEventListener('touchend',   onTouchEnd);
+
+  // File upload
+  document.getElementById('fileInput').addEventListener('change', onFileChange);
+}
+
+// ─────────────────────────────────────────────
+//  TEMPLATE GRID
+// ─────────────────────────────────────────────
+function svgDataURL(svgStr) {
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+}
+
+function buildTemplateGrid() {
+  const grid = document.getElementById('templateGrid');
+  TEMPLATES.forEach((t, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'template-thumb';
+    wrap.title = t.name;
+
+    const img = document.createElement('img');
+    img.src = svgDataURL(t.svg);
+    img.alt = t.name;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'thumb-label';
+    lbl.textContent = t.name;
+
+    wrap.appendChild(img);
+    wrap.appendChild(lbl);
+    wrap.addEventListener('click', () => selectTemplate(i));
+    grid.appendChild(wrap);
+  });
+}
+
+function selectTemplate(index) {
+  document.querySelectorAll('.template-thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+
+  const img = new Image();
+  img.onload = () => {
+    currentImage = img;
+    resizeCanvas(img.naturalWidth || img.width, img.naturalHeight || img.height);
+    resetLabelPositions();
+    showCanvas();
+    draw();
+  };
+  img.src = svgDataURL(TEMPLATES[index].svg);
+}
+
+// ─────────────────────────────────────────────
+//  FILE UPLOAD
+// ─────────────────────────────────────────────
+function onFileChange(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      currentImage = img;
+      resizeCanvas(img.naturalWidth, img.naturalHeight);
+      resetLabelPositions();
+      showCanvas();
+      draw();
+      document.querySelectorAll('.template-thumb').forEach(el => el.classList.remove('active'));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function showCanvas() {
+  emptyState.style.display = 'none';
+  canvas.style.display = 'block';
+}
+
+// ─────────────────────────────────────────────
+//  CANVAS SIZING
+// ─────────────────────────────────────────────
+function resizeCanvas(w, h) {
+  const scale  = Math.min(1, MAX_CANVAS_W / w);
+  canvas.width  = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+}
+
+// ─────────────────────────────────────────────
+//  LABELS
+// ─────────────────────────────────────────────
+function addLabel(text, relX, relY) {
+  const label = {
+    id:       nextLabelId++,
+    text:     text ?? 'TEXT',
+    x:        canvas.width  * (relX ?? 0.5),
+    y:        canvas.height * (relY ?? 0.5),
+    fontSize: 48,
+    align:    'center'
+  };
+  labels.push(label);
+  return label;
+}
+
+function addLabelFromButton() {
+  const label = addLabel('NEW TEXT', 0.5, 0.5);
+  renderLabelsPanel();
+  setActiveLabelId(label.id);
+  syncControls();
+  draw();
+}
+
+function deleteActiveLabel() {
+  if (labels.length <= 1) return;
+  labels = labels.filter(l => l.id !== activeLabelId);
+  const next = labels[labels.length - 1];
+  setActiveLabelId(next?.id ?? null);
+  renderLabelsPanel();
+  syncControls();
+  draw();
+}
+
+function resetLabelPositions() {
+  if (labels[0]) { labels[0].x = canvas.width * 0.5; labels[0].y = canvas.height * 0.08; }
+  if (labels[1]) { labels[1].x = canvas.width * 0.5; labels[1].y = canvas.height * 0.92; }
+  for (let i = 2; i < labels.length; i++) {
+    labels[i].x = canvas.width * 0.5;
+    labels[i].y = canvas.height * 0.5;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  LABELS PANEL
+// ─────────────────────────────────────────────
+function renderLabelsPanel() {
+  const row = document.getElementById('labelsRow');
+  row.innerHTML = '';
+
+  labels.forEach(l => {
+    const btn = document.createElement('button');
+    btn.className = 'label-tab' + (l.id === activeLabelId ? ' active' : '');
+    const preview = l.text ? (l.text.length > 12 ? l.text.slice(0, 12) + '…' : l.text) : '(empty)';
+    btn.textContent = preview;
+    btn.addEventListener('click', () => {
+      setActiveLabelId(l.id);
+      renderLabelsPanel();
+      syncControls();
+    });
+    row.appendChild(btn);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-label-btn';
+  addBtn.textContent = '+ Add Text';
+  addBtn.addEventListener('click', addLabelFromButton);
+  row.appendChild(addBtn);
+
+  // Delete button state
+  document.getElementById('deleteBtn').disabled = labels.length <= 1;
+}
+
+function setActiveLabelId(id) {
+  activeLabelId = id;
+}
+
+function getActiveLabel() {
+  return labels.find(l => l.id === activeLabelId) ?? null;
+}
+
+// ─────────────────────────────────────────────
+//  CONTROLS SYNC
+// ─────────────────────────────────────────────
+function syncControls() {
+  const label = getActiveLabel();
+  if (!label) return;
+  document.getElementById('textInput').value        = label.text;
+  document.getElementById('fontSizeSlider').value   = label.fontSize;
+  document.getElementById('fontSizeVal').textContent = label.fontSize + 'px';
+  ['left', 'center', 'right'].forEach(a => {
+    document.getElementById('align' + cap(a)).classList.toggle('active', label.align === a);
+  });
+}
+
+function onTextInput() {
+  const label = getActiveLabel();
+  if (!label) return;
+  label.text = document.getElementById('textInput').value;
+  renderLabelsPanel();
+  setActiveLabelId(label.id);
+  draw();
+}
+
+function onFontSize() {
+  const label = getActiveLabel();
+  if (!label) return;
+  label.fontSize = parseInt(document.getElementById('fontSizeSlider').value);
+  document.getElementById('fontSizeVal').textContent = label.fontSize + 'px';
+  draw();
+}
+
+function setAlign(align) {
+  const label = getActiveLabel();
+  if (!label) return;
+  label.align = align;
+  ['left', 'center', 'right'].forEach(a => {
+    document.getElementById('align' + cap(a)).classList.toggle('active', a === align);
+  });
+  draw();
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ─────────────────────────────────────────────
+//  DRAW
+// ─────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (currentImage) {
+    ctx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  labels.forEach(drawLabel);
+}
+
+function drawLabel(label) {
+  if (!label.text) return;
+  const fs = label.fontSize;
+  ctx.save();
+  ctx.font        = `bold ${fs}px Impact, "Arial Black", sans-serif`;
+  ctx.textAlign   = label.align;
+  ctx.textBaseline = 'middle';
+
+  const lw = Math.max(1, fs / 7);
+  ctx.lineWidth   = lw * 2;
+  ctx.lineJoin    = 'round';
+  ctx.strokeStyle = 'black';
+  ctx.strokeText(label.text, label.x, label.y);
+
+  ctx.fillStyle = 'white';
+  ctx.fillText(label.text, label.x, label.y);
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────
+//  HIT TEST
+// ─────────────────────────────────────────────
+function hitTest(label, px, py) {
+  if (!label.text) return false;
+  ctx.font = `bold ${label.fontSize}px Impact, "Arial Black", sans-serif`;
+  const w  = ctx.measureText(label.text).width;
+  const h  = label.fontSize * 1.4;
+  const pad = 10;
+  let x0;
+  if      (label.align === 'center') x0 = label.x - w / 2;
+  else if (label.align === 'right')  x0 = label.x - w;
+  else                               x0 = label.x;
+  const y0 = label.y - h / 2;
+  return px >= x0 - pad && px <= x0 + w + pad && py >= y0 - pad && py <= y0 + h + pad;
+}
+
+// ─────────────────────────────────────────────
+//  COORDINATE MAPPING
+// ─────────────────────────────────────────────
+function canvasPos(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - r.left)  * (canvas.width  / r.width),
+    y: (clientY - r.top)   * (canvas.height / r.height)
+  };
+}
+
+// ─────────────────────────────────────────────
+//  MOUSE DRAG
+// ─────────────────────────────────────────────
+function onPointerDown(e) {
+  const pos = canvasPos(e.clientX, e.clientY);
+  for (let i = labels.length - 1; i >= 0; i--) {
+    if (hitTest(labels[i], pos.x, pos.y)) {
+      dragging = { labelId: labels[i].id, ox: pos.x - labels[i].x, oy: pos.y - labels[i].y };
+      setActiveLabelId(labels[i].id);
+      renderLabelsPanel();
+      syncControls();
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+  }
+}
+
+function onPointerMove(e) {
+  const pos = canvasPos(e.clientX, e.clientY);
+  if (dragging) {
+    const lbl = labels.find(l => l.id === dragging.labelId);
+    if (lbl) { lbl.x = pos.x - dragging.ox; lbl.y = pos.y - dragging.oy; draw(); }
+  } else {
+    canvas.style.cursor = labels.some(l => hitTest(l, pos.x, pos.y)) ? 'grab' : 'default';
+  }
+}
+
+function onPointerUp() {
+  dragging = null;
+  canvas.style.cursor = 'default';
+}
+
+// ─────────────────────────────────────────────
+//  TOUCH DRAG
+// ─────────────────────────────────────────────
+function onTouchStart(e) {
+  e.preventDefault();
+  const pos = canvasPos(e.touches[0].clientX, e.touches[0].clientY);
+  for (let i = labels.length - 1; i >= 0; i--) {
+    if (hitTest(labels[i], pos.x, pos.y)) {
+      dragging = { labelId: labels[i].id, ox: pos.x - labels[i].x, oy: pos.y - labels[i].y };
+      setActiveLabelId(labels[i].id);
+      renderLabelsPanel();
+      syncControls();
+      return;
+    }
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!dragging) return;
+  const pos = canvasPos(e.touches[0].clientX, e.touches[0].clientY);
+  const lbl = labels.find(l => l.id === dragging.labelId);
+  if (lbl) { lbl.x = pos.x - dragging.ox; lbl.y = pos.y - dragging.oy; draw(); }
+}
+
+function onTouchEnd() { dragging = null; }
+
+// ─────────────────────────────────────────────
+//  DOWNLOAD
+// ─────────────────────────────────────────────
+function downloadMeme() {
+  if (!currentImage) {
+    alert('Please select a template or upload an image first!');
+    return;
+  }
+  const a = document.createElement('a');
+  a.download = 'meme.png';
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+// ─────────────────────────────────────────────
+//  GO
+// ─────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

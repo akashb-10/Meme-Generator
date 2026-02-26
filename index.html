@@ -240,6 +240,7 @@
       transition: border-color 0.15s;
     }
     .text-input:focus { border-color: var(--accent); }
+    textarea.text-input { resize: none; min-height: 66px; line-height: 1.5; }
 
     /* Font size */
     .range-row { display: flex; align-items: center; gap: 8px; }
@@ -360,8 +361,8 @@
       <div class="control-row">
         <div class="control-group" style="flex:2; min-width:180px;">
           <label>Text</label>
-          <input type="text" class="text-input" id="textInput"
-                 placeholder="Enter meme text…" oninput="onTextInput()">
+          <textarea class="text-input" id="textInput"
+                    placeholder="Enter meme text…" oninput="onTextInput()"></textarea>
         </div>
         <div class="control-group" style="min-width:110px; flex:0;">
           <label>Align</label>
@@ -395,141 +396,20 @@
 
 <script>
 // ─────────────────────────────────────────────
-//  SVG TEMPLATES
+//  TEMPLATES
 // ─────────────────────────────────────────────
 const TEMPLATES = [
-  {
-    name: 'Drake',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
-      <rect width="600" height="300" fill="#2c3e50"/>
-      <rect y="300" width="600" height="300" fill="#ecf0f1"/>
-      <rect x="0"   y="0"   width="300" height="300" fill="#34495e"/>
-      <rect x="300" y="0"   width="300" height="300" fill="#2c3e50"/>
-      <rect x="0"   y="300" width="300" height="300" fill="#bdc3c7"/>
-      <rect x="300" y="300" width="300" height="300" fill="#ecf0f1"/>
-      <text x="150" y="170" font-size="90" text-anchor="middle">🚫</text>
-      <text x="150" y="470" font-size="90" text-anchor="middle">👉</text>
-      <text x="450" y="155" font-size="22" text-anchor="middle" fill="#aaa" font-family="sans-serif">Bad option</text>
-      <text x="450" y="455" font-size="22" text-anchor="middle" fill="#444" font-family="sans-serif">Good option</text>
-    </svg>`
-  },
-  {
-    name: 'This Is Fine',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
-      <defs>
-        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#e74c3c"/>
-          <stop offset="100%" stop-color="#f39c12"/>
-        </linearGradient>
-      </defs>
-      <rect width="600" height="450" fill="url(#g1)"/>
-      <rect y="370" width="600" height="80" fill="#5d4037" opacity="0.6"/>
-      <text x="300" y="80"  font-size="32" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">This is fine.</text>
-      <text x="300" y="200" font-size="110" text-anchor="middle">🔥</text>
-      <text x="300" y="350" font-size="80"  text-anchor="middle">☕</text>
-    </svg>`
-  },
-  {
-    name: 'Two Buttons',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="500">
-      <rect width="600" height="500" fill="#2980b9"/>
-      <text x="300" y="80" font-size="30" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">IMPOSSIBLE CHOICE</text>
-      <rect x="60"  y="160" width="190" height="70" rx="12" fill="#e74c3c"/>
-      <rect x="350" y="160" width="190" height="70" rx="12" fill="#e74c3c"/>
-      <text x="155" y="202" font-size="18" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">OPTION A</text>
-      <text x="445" y="202" font-size="18" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">OPTION B</text>
-      <text x="300" y="420" font-size="100" text-anchor="middle">😰</text>
-    </svg>`
-  },
-  {
-    name: 'Expanding Brain',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="640">
-      <rect y="0"   width="600" height="160" fill="#1a252f"/>
-      <rect y="160" width="600" height="160" fill="#1f618d" opacity="0.85"/>
-      <rect y="320" width="600" height="160" fill="#6c3483" opacity="0.75"/>
-      <rect y="480" width="600" height="160" fill="#b7950b" opacity="0.7"/>
-      <text x="260" y="90"  font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Normal idea</text>
-      <text x="260" y="250" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Slightly better</text>
-      <text x="260" y="410" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Big brain idea</text>
-      <text x="260" y="570" font-size="22" fill="white" font-family="sans-serif" font-weight="bold">Galaxy brain ✨</text>
-      <text x="560" y="100"  font-size="52" text-anchor="middle">🧠</text>
-      <text x="560" y="265"  font-size="64" text-anchor="middle">🧠</text>
-      <text x="560" y="430"  font-size="76" text-anchor="middle">🧠</text>
-      <text x="560" y="590"  font-size="88" text-anchor="middle">🧠</text>
-    </svg>`
-  },
-  {
-    name: 'Distracted BF',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
-      <rect width="600" height="400" fill="#3498db"/>
-      <rect x="20"  y="80"  width="160" height="240" rx="8" fill="#e74c3c" opacity="0.85"/>
-      <rect x="220" y="60"  width="160" height="280" rx="8" fill="#e67e22" opacity="0.85"/>
-      <rect x="420" y="100" width="160" height="200" rx="8" fill="#2ecc71" opacity="0.85"/>
-      <text x="100" y="225" font-size="70" text-anchor="middle">😠</text>
-      <text x="300" y="225" font-size="70" text-anchor="middle">😍</text>
-      <text x="500" y="215" font-size="70" text-anchor="middle">✨</text>
-      <text x="100" y="370" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">Girlfriend</text>
-      <text x="300" y="370" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">Boyfriend</text>
-      <text x="500" y="340" font-size="13" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">New Thing</text>
-    </svg>`
-  },
-  {
-    name: 'Change My Mind',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
-      <rect width="600" height="450" fill="#fdf6e3"/>
-      <text x="300" y="90"  font-size="30" text-anchor="middle" fill="#555" font-weight="bold" font-family="sans-serif">Change My Mind</text>
-      <rect x="80" y="140" width="440" height="130" rx="10" fill="white" stroke="#ccc" stroke-width="2"/>
-      <text x="300" y="215" font-size="20" text-anchor="middle" fill="#333" font-family="sans-serif">Your hot take here</text>
-      <rect x="100" y="290" width="400" height="16" rx="4" fill="#8d6e63" opacity="0.5"/>
-      <text x="300" y="380" font-size="60" text-anchor="middle">🧍</text>
-      <text x="450" y="380" font-size="50" text-anchor="middle">☕</text>
-    </svg>`
-  },
-  {
-    name: 'Surprised',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
-      <rect width="600" height="450" fill="#f1c40f"/>
-      <text x="300" y="70"  font-size="36" text-anchor="middle" fill="#2c3e50" font-weight="bold" font-family="sans-serif">Surprised Pikachu</text>
-      <text x="300" y="330" font-size="220" text-anchor="middle">😮</text>
-    </svg>`
-  },
-  {
-    name: 'One Does Not',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#1a1a2e"/>
-          <stop offset="100%" stop-color="#2c3e50"/>
-        </linearGradient>
-      </defs>
-      <rect width="600" height="400" fill="url(#sky)"/>
-      <polygon points="0,400 160,210 310,360 460,190 600,400" fill="#27ae60" opacity="0.45"/>
-      <polygon points="0,400  90,290 190,400" fill="#1e8449" opacity="0.65"/>
-      <polygon points="420,400 520,270 600,400" fill="#1e8449" opacity="0.65"/>
-      <text x="300" y="90"  font-size="26" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">ONE DOES NOT SIMPLY</text>
-      <text x="300" y="270" font-size="110" text-anchor="middle">🧙</text>
-      <text x="300" y="370" font-size="22" text-anchor="middle" fill="#bdc3c7" font-family="sans-serif">walk into Mordor</text>
-    </svg>`
-  },
-  {
-    name: 'Success Kid',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
-      <rect width="600" height="450" fill="#27ae60"/>
-      <text x="300" y="80"  font-size="42" text-anchor="middle" fill="white" font-weight="bold" font-family="sans-serif">SUCCESS KID</text>
-      <text x="300" y="320" font-size="200" text-anchor="middle">✊</text>
-      <text x="300" y="420" font-size="22" text-anchor="middle" fill="#d5f5e3" font-family="sans-serif">When the plan actually works</text>
-    </svg>`
-  },
-  {
-    name: 'Blank',
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450">
-      <rect width="600" height="450" fill="white"/>
-      <rect x="18" y="18" width="564" height="414" fill="none" stroke="#ddd" stroke-width="2" stroke-dasharray="10,5"/>
-      <text x="300" y="185" font-size="30" text-anchor="middle" fill="#ccc" font-family="sans-serif">Blank Canvas</text>
-      <text x="300" y="255" font-size="20" text-anchor="middle" fill="#ddd" font-family="sans-serif">Upload an image or start typing</text>
-      <text x="300" y="340" font-size="60" text-anchor="middle">🖼️</text>
-    </svg>`
-  }
+  { name: 'Drake',            img: 'templates/drake.jpg' },
+  { name: 'Distracted BF',   img: 'templates/distracted-bf.jpg' },
+  { name: 'Two Buttons',     img: 'templates/two-buttons.jpg' },
+  { name: 'Expanding Brain', img: 'templates/expanding-brain.jpg' },
+  { name: 'This Is Fine',    img: 'templates/this-is-fine.jpg' },
+  { name: 'Change My Mind',  img: 'templates/change-my-mind.jpg' },
+  { name: 'Surprised Pikachu', img: 'templates/surprised-pikachu.jpg' },
+  { name: 'One Does Not',    img: 'templates/one-does-not.jpg' },
+  { name: 'Success Kid',     img: 'templates/success-kid.jpg' },
+  { name: 'Woman Yelling',   img: 'templates/woman-yelling-cat.jpg' },
+  { name: 'Hide Pain Harold',img: 'templates/hide-pain-harold.jpg' },
 ];
 
 // ─────────────────────────────────────────────
@@ -577,10 +457,6 @@ function init() {
 // ─────────────────────────────────────────────
 //  TEMPLATE GRID
 // ─────────────────────────────────────────────
-function svgDataURL(svgStr) {
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
-}
-
 function buildTemplateGrid() {
   const grid = document.getElementById('templateGrid');
   TEMPLATES.forEach((t, i) => {
@@ -589,7 +465,7 @@ function buildTemplateGrid() {
     wrap.title = t.name;
 
     const img = document.createElement('img');
-    img.src = svgDataURL(t.svg);
+    img.src = t.img;
     img.alt = t.name;
 
     const lbl = document.createElement('div');
@@ -616,7 +492,7 @@ function selectTemplate(index) {
     showCanvas();
     draw();
   };
-  img.src = svgDataURL(TEMPLATES[index].svg);
+  img.src = TEMPLATES[index].img;
 }
 
 // ─────────────────────────────────────────────
@@ -798,20 +674,28 @@ function draw() {
 
 function drawLabel(label) {
   if (!label.text) return;
-  const fs = label.fontSize;
+  const fs         = label.fontSize;
+  const lineHeight = fs * 1.25;
+  const lines      = label.text.split('\n');
+  const totalH     = lines.length * lineHeight;
+
   ctx.save();
-  ctx.font        = `bold ${fs}px Impact, "Arial Black", sans-serif`;
-  ctx.textAlign   = label.align;
+  ctx.font         = `bold ${fs}px Impact, "Arial Black", sans-serif`;
+  ctx.textAlign    = label.align;
   ctx.textBaseline = 'middle';
 
   const lw = Math.max(1, fs / 7);
-  ctx.lineWidth   = lw * 2;
-  ctx.lineJoin    = 'round';
-  ctx.strokeStyle = 'black';
-  ctx.strokeText(label.text, label.x, label.y);
+  ctx.lineWidth  = lw * 2;
+  ctx.lineJoin   = 'round';
 
-  ctx.fillStyle = 'white';
-  ctx.fillText(label.text, label.x, label.y);
+  lines.forEach((line, i) => {
+    const y = label.y - totalH / 2 + i * lineHeight + lineHeight / 2;
+    ctx.strokeStyle = 'black';
+    ctx.strokeText(line, label.x, y);
+    ctx.fillStyle = 'white';
+    ctx.fillText(line, label.x, y);
+  });
+
   ctx.restore();
 }
 
@@ -821,15 +705,17 @@ function drawLabel(label) {
 function hitTest(label, px, py) {
   if (!label.text) return false;
   ctx.font = `bold ${label.fontSize}px Impact, "Arial Black", sans-serif`;
-  const w  = ctx.measureText(label.text).width;
-  const h  = label.fontSize * 1.4;
+  const lines      = label.text.split('\n');
+  const lineHeight = label.fontSize * 1.25;
+  const totalH     = lines.length * lineHeight;
+  const w          = Math.max(...lines.map(l => ctx.measureText(l).width));
   const pad = 10;
   let x0;
   if      (label.align === 'center') x0 = label.x - w / 2;
   else if (label.align === 'right')  x0 = label.x - w;
   else                               x0 = label.x;
-  const y0 = label.y - h / 2;
-  return px >= x0 - pad && px <= x0 + w + pad && py >= y0 - pad && py <= y0 + h + pad;
+  const y0 = label.y - totalH / 2;
+  return px >= x0 - pad && px <= x0 + w + pad && py >= y0 - pad && py <= y0 + totalH + pad;
 }
 
 // ─────────────────────────────────────────────
